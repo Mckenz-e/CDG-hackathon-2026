@@ -253,6 +253,18 @@ positive. `cam_3` in the default config is deliberately such a camera — a
 reflection or a stuck log that never improves no matter how often it is
 visited — so you can watch the mechanism work.
 
+**Where the verdict in step 5 is delivered.** On the first report after the
+cooldown if one arrives, and otherwise at the moment the next dispatch to that
+camera is considered. The second path is not a fallback, it is the usual one: a
+camera reporting every few seconds against a two-minute cooldown lands every
+report *inside* the cooldown, and the dock then dispatches on a queued report
+before any post-cooldown one turns up. Judging only on arrival meant the verdict
+was silently dropped and `service_count` never reached `RETRY_LIMIT`, so a
+camera that never improved could be serviced forever. The report being judged is
+always post-mission, because reports are discarded while a camera is being
+serviced. `test_service_is_judged_even_when_reports_miss_the_cooldown_window`
+pins it.
+
 ## Boat states
 
 ```

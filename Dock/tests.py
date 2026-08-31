@@ -150,6 +150,76 @@ def test_reports_during_servicing_are_ignored():
         h.close()
 
 
+def test_service_is_judged_even_when_reports_miss_the_cooldown_window():
+    """A camera that never improves must reach NEEDS ATTENTION, whatever the
+    report timing.
+
+    _on_report only evaluates a report that arrives with the cooldown already
+    expired. When reports come in faster than the cooldown, every one of them
+    lands DURING it, and the dock then dispatches on a queued report before any
+    post-cooldown one turns up - so the verdict never fired, RETRY_LIMIT never
+    counted, and the camera got serviced forever.
+
+    This drives exactly that timing: the only report of each cycle arrives
+    inside the cooldown, RETRY_LIMIT times over, with coverage never dropping.
+    The verdict for a service is delivered when the next dispatch is considered,
+    so retirement happens on the attempt after the last one.
+    """
+    h = Harness()
+    try:
+        cam = config.CAMERAS["cam_1"]
+
+        def report(coverage):
+            return {"camera": "cam_1", "coverage": coverage, "lat": cam["lat"],
+                    "long": cam["long"], "timestamp": h.clock.now()}
+
+        for attempt in range(config.RETRY_LIMIT + 1):
+            rec = h.dock.records["cam_1"]
+            # The dock only dispatches to an idle boat. This test drives the
+            # dock's bookkeeping, so hand it a boat that is home and charged.
+            h.dock.boat = {"state": "idle", "battery": 100.0, "mission": None}
+            h.dock.queue = [report(0.80)]         # coverage never improves
+            h.dock._maybe_dispatch(h.clock.now())
+            h.bus.poll()
+
+            if rec.needs_attention:
+                assert h.dock.active_camera is None,                     "a camera retired on this very attempt must not be dispatched to"
+                break
+
+            assert h.dock.active_camera == "cam_1",                 "attempt %d never dispatched" % attempt
+
+            # Mission ends and the boat comes home; the cooldown starts now.
+            h.boat.state, h.boat.mission_camera = "idle", None
+            h.dock._mark_clear("cam_1")
+            h.bus.poll()
+
+            # The only report of this cycle arrives INSIDE the cooldown, so
+            # _on_report cannot be the thing that evaluates it. This is the
+            # case whose verdict used to be lost.
+            h.clock.advance(config.CAMERA_COOLDOWN_S / 2.0)
+            h.bus.publish(config.TOPIC_CAMERA_REPORT, report(0.80))
+            h.bus.poll()
+            assert rec.awaiting_evaluation,                 "a report inside the cooldown must not count as the verdict"
+
+            h.clock.advance(config.CAMERA_COOLDOWN_S)      # cooldown expires
+        else:
+            raise AssertionError(
+                "serviced %d times with no improvement and still not retired"
+                % config.RETRY_LIMIT)
+
+        assert h.logged("NEEDS ATTENTION")
+        assert h.dock.records["cam_1"].service_count == config.RETRY_LIMIT
+        assert not any(r["camera"] == "cam_1" for r in h.dock.queue),             "a retired camera must not linger in the queue"
+
+        # ...and it stays retired.
+        h.dock.boat = {"state": "idle", "battery": 100.0, "mission": None}
+        h.dock.queue = [report(0.95)]
+        h.dock._maybe_dispatch(h.clock.now())
+        assert h.dock.active_camera is None, "must not dispatch to a retired camera"
+    finally:
+        h.close()
+
+
 def test_aborts_mission_when_battery_drops():
     # Drain fast enough that the boat cannot finish the trip.
     h = Harness(BATTERY_DRAIN_MOVING_PCT_S=0.8, BATTERY_START_PCT=60.0)

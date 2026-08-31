@@ -153,6 +153,10 @@ class DockStation:
                     rec.service_count, config.RETRY_LIMIT))
         if rec.service_count >= config.RETRY_LIMIT:
             rec.needs_attention = True
+            # Nothing queued for it can earn a mission any more, and leaving it
+            # there would keep it at the top of the queue depth for the rest of
+            # the run.
+            self.queue = [r for r in self.queue if r["camera"] != rec.cam_id]
             self.log("** %s NEEDS ATTENTION: serviced %d times with no coverage "
                      "drop - no longer dispatching (possible false positive, stuck "
                      "debris, or obstruction)" % (rec.cam_id, rec.service_count))
@@ -260,6 +264,25 @@ class DockStation:
 
         cam_id = best["camera"]
         rec = self.records[cam_id]
+
+        # Judge the previous service before starting another one.
+        #
+        # _on_report only evaluates a report that ARRIVES with the cooldown
+        # already expired, and that window is easy to miss: the dock re-decides
+        # every DOCK_DECISION_INTERVAL_S, so it usually dispatches on a report
+        # queued during the cooldown before any post-cooldown one turns up. The
+        # dispatch then reset awaiting_evaluation and the verdict was silently
+        # lost - so a camera that never improves could be serviced forever
+        # without RETRY_LIMIT ever counting to three.
+        #
+        # This report is the right thing to judge on: reports are dropped while
+        # a camera is being serviced, so anything queued for it arrived after
+        # the boat left, and describes the water the boat left behind.
+        if rec.awaiting_evaluation:
+            self._evaluate_service(rec, best["coverage"])
+            if rec.needs_attention:
+                return                              # that verdict just retired it
+
         rec.baseline_coverage = best["coverage"]
         rec.awaiting_evaluation = True
 
