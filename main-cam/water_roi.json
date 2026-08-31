@@ -1,0 +1,10 @@
+{
+  "_comment": "Normalised polygon (x,y in 0-1) of the water surface for the static canal scene in canal_trash.mp4. Estimated by eye from a 10% coordinate grid; adjust if the camera moves.",
+  "polygon": [
+    [0.00, 0.050], [0.20, 0.030], [0.40, 0.022], [0.60, 0.030],
+    [0.80, 0.060], [1.00, 0.100],
+    [1.00, 0.900], [0.90, 0.835], [0.80, 0.775], [0.70, 0.700],
+    [0.60, 0.620], [0.50, 0.562], [0.40, 0.515], [0.30, 0.468],
+    [0.20, 0.420], [0.10, 0.375], [0.00, 0.330]
+  ]
+}

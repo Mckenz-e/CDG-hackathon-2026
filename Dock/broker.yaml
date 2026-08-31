@@ -1,0 +1,18 @@
+# Minimal MQTT broker for running the dock against a real camera server, for
+# when there is no mosquitto on the machine. amqtt is a pure-Python broker:
+#
+#     pip install amqtt
+#     amqtt -c broker.yaml
+#
+# Localhost only and anonymous on purpose - this is a development broker, not
+# something to expose. For anything reachable from another machine use a real
+# broker with authentication, and set MQTT_USERNAME / MQTT_PASSWORD.
+listeners:
+  default:
+    type: tcp
+    bind: 127.0.0.1:1883
+sys_interval: 0
+auth:
+  allow-anonymous: true
+  plugins:
+    - auth_anonymous

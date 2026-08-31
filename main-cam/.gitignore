@@ -1,0 +1,34 @@
+# secrets -- never commit
+.env
+
+# virtualenv (platform-specific; rebuild on each machine)
+venv/
+__pycache__/
+*.pyc
+
+# derived dataset -- regenerate with: python build_dataset.py
+dataset_merged/
+
+# training outputs
+runs/
+
+# model weights (yolo11s.pt auto-downloads; trained weights are large)
+*.pt
+
+# inference output
+test_output.jpg
+test_zones.jpg
+
+# source video -- far too large for git (GitHub rejects >100MB); back it up separately
+*.mp4
+*.mov
+*.avi
+
+# label/prediction comparison renders
+canal_compare/
+
+# derived fine-tuning set -- rebuild from data1 + dataset_merged
+dataset_finetune/
+
+# annotated detection renders
+detections/

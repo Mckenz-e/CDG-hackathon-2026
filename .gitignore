@@ -1,0 +1,46 @@
+# --- secrets ---------------------------------------------------------------
+# .env holds a Roboflow API key. Nothing imports it any more (see
+# main-cam/CLAUDE.md), but it must never reach the remote.
+.env
+*.env
+
+# --- environments ----------------------------------------------------------
+# Platform-specific; rebuild per machine. main-cam/venv holds torch + CUDA and
+# is several GB.
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# --- run output ------------------------------------------------------------
+*.log
+
+# --- large source media ----------------------------------------------------
+# canal_trash.mp4 is 676 MB and video_3.mp4 is 372 MB. GitHub rejects any file
+# over 100 MB, so these are backed up separately, not here.
+*.mp4
+*.mov
+*.avi
+
+# --- derived datasets ------------------------------------------------------
+# dataset_merged/ rebuilds with `python build_dataset.py`; the fine-tune sets
+# rebuild from data1 + dataset_merged. dataset_finetune2 alone is 4.0 GB.
+main-cam/dataset_merged/
+main-cam/dataset_finetune/
+main-cam/dataset_finetune2/
+
+# --- training output -------------------------------------------------------
+# 163 MB of runs, most of it superseded fine-tune attempts that CLAUDE.md
+# records as failures. The one operational model is force-added:
+#     git add -f main-cam/runs/trash_yolo11s/weights/best.pt
+main-cam/runs/
+*.pt
+
+# --- inference renders (regenerate by re-running the scripts) --------------
+main-cam/canal_compare/
+main-cam/detections/
+main-cam/*_sliced.jpg
+main-cam/test_output*.jpg
+main-cam/test_zones*.jpg
+main-cam/vf_*.jpg
+main-cam/check*.jpg
